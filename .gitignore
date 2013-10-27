@@ -1,0 +1,23 @@
+*.class
+
+# Package Files #
+# *.jar keep jar as we may need to commit external jars not in any maven repo
+*.war
+*.ear
+
+# eclipse
+target
+.classpath
+.project
+.settings
+bin
+
+# hs_err
+*.log
+
+#android
+gen
+proguard
+local.properties
+
+Thumbs.db
