@@ -4,12 +4,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.MediaStore;
@@ -363,5 +365,28 @@ public class IntentFactory {
 	protected void doLog(@Nonnull String string) {
 		// TODO Auto-generated method stub
 
+	}
+
+	public Intent openActivity(@Nonnull Context packageContext, @Nonnull Class<?> clazz) {
+		return openActivity(packageContext, clazz, Collections.<String, Object> emptyMap());
+	}
+
+	public Intent openActivity(@Nonnull Context packageContext, @Nonnull Class<?> clazz, Map<String, ?> extras) {
+		Intent intent = new Intent(packageContext, clazz);
+
+		for (Map.Entry<String, ?> entry : extras.entrySet()) {
+
+			// TODO: test write boolean and read as primitive and serializable
+			if (entry.getValue() instanceof String) {
+				intent.putExtra(entry.getKey(), (String) entry.getValue());
+			} else if (entry.getValue() instanceof Boolean) {
+				intent.putExtra(entry.getKey(), (Boolean) entry.getValue());
+			} else {
+				// TODO: handle null
+				throw new RuntimeException("Invalid type: " + entry.getValue().getClass());
+			}
+		}
+
+		return intent;
 	}
 }

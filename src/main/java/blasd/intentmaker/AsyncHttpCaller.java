@@ -1,4 +1,4 @@
-package blasd.wildling;
+package blasd.intentmaker;
 
 import java.io.IOException;
 import java.net.ProtocolException;
