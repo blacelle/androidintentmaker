@@ -10,7 +10,8 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.util.Log;
+import blasd.android.intentmaker.ContextBasedIntentFactory;
+import blasd.android.intentmaker.IIntentFactory;
 import blasd.android.intentmaker.IntentFactory;
 
 /**
@@ -52,15 +53,14 @@ public class AmazonCompatibleIntentIntegrator extends IntentIntegrator {
 			@Override
 			public void onClick(DialogInterface dialogInterface, int i) {
 				String packageName = targetApplications.get(0);
+
+				ContextBasedIntentFactory factory = ContextBasedIntentFactory.buildFactory(activity.getApplication(), "Download Barcode Scanner",
+						IntentFactory.POPUP_FLAGS);
+
 				@SuppressWarnings("null")
-				Intent intent = new IntentFactory("Download Barcode Scanner", IntentFactory.POPUP_FLAGS).openMarket(activity.getApplication(),
-						packageName);
-				try {
-					activity.startActivity(intent);
-				} catch (ActivityNotFoundException anfe) {
-					// Hmm, market is not installed
-					Log.w(TAG, "Google Play is not installed; cannot install " + packageName);
-				}
+				Intent intent = factory.openMarket(activity.getApplication(), packageName);
+
+				factory.startActivity(activity, intent);
 			}
 		});
 		downloadDialog.setNegativeButton(buttonNo, new DialogInterface.OnClickListener() {

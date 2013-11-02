@@ -10,18 +10,14 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import android.app.Application;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.MediaStore;
 
 public class IntentFactory {
-
-	@Nonnull
-	public static final String GOOGLE_PLAY_INSTALLER_PACKAGE_NAME = "com.android.vending";
-	@Nonnull
-	public static final String AMAZON_INSTALLER_PACKAGE_NAME = "com.amazon.venezia";
 
 	@Nonnull
 	protected final Set<Integer> defaultFlags;
@@ -72,13 +68,15 @@ public class IntentFactory {
 	 * By default, {@link Intent} are created without any flags and are wrapped
 	 * in an {@link Intent#createChooser(i)}
 	 */
-	@SuppressWarnings("null")
 	public IntentFactory() {
-		this.defaultFlags = Collections.emptySet();
-		this.defaultIntentChooserTitle = "Pick Application";
+		this(null, new int[0]);
 	}
 
 	public IntentFactory(int... defaultFlags) {
+		this(null, defaultFlags);
+	}
+
+	public IntentFactory(@Nonnull Collection<Integer> defaultFlags) {
 		this(null, defaultFlags);
 	}
 
@@ -92,18 +90,23 @@ public class IntentFactory {
 			}
 		}
 
-		this.defaultIntentChooserTitle = intentChooserTitle;
+		this.defaultIntentChooserTitle = intentChooserTitle == null ? "Pick Application" : intentChooserTitle;
 	}
 
-	public IntentFactory(@Nonnull Collection<Integer> defaultFlags) {
-		this(null, defaultFlags);
-	}
+	// TODO: base this on int[] constructor
+	public IntentFactory(CharSequence intentChooserTitle, Collection<Integer> defaultFlags) {
+		this.defaultFlags = new HashSet<Integer>();
 
-	public IntentFactory(CharSequence intentChooserTitle, @Nonnull Collection<Integer> defaultFlags) {
-		// Shallow copy
-		this.defaultFlags = new HashSet<Integer>(defaultFlags);
+		if (defaultFlags != null) {
+			for (Integer i : defaultFlags) {
+				// Clean null instances
+				if (i != null) {
+					this.defaultFlags.add(i);
+				}
+			}
+		}
 
-		this.defaultIntentChooserTitle = intentChooserTitle;
+		this.defaultIntentChooserTitle = intentChooserTitle == null ? "Pick Application" : intentChooserTitle;
 	}
 
 	/**
@@ -113,6 +116,10 @@ public class IntentFactory {
 	 */
 	public boolean addDefaultFlag(int additionalFlag) {
 		return this.defaultFlags.add(additionalFlag);
+	}
+
+	public Intent configureIntent(Intent intent) {
+		return configureIntent(intent, defaultIntentChooserTitle);
 	}
 
 	/**
@@ -228,73 +235,6 @@ public class IntentFactory {
 	}
 
 	/**
-	 * As some markets forbid hosted applications to reference others market
-	 * (e.g. Amazon Market), one needs to easily open the market from which an
-	 * application has been installed.
-	 * 
-	 * @param application
-	 * @return an {@link Intent} opening the appropriate market for current
-	 *         application,
-	 * @throws NullPointerException
-	 *             if application is null
-	 */
-	public Intent openMarketForCurrentApplication(@Nonnull Application application) throws NullPointerException {
-		String currentApplicationPackage = application.getPackageName();
-
-		if (currentApplicationPackage == null) {
-			return null;
-		} else {
-			return openMarket(application, currentApplicationPackage);
-		}
-	}
-
-	public Intent openMarket(@Nonnull Application application, @Nonnull String targetPackageName) throws NullPointerException {
-		String currentApplicationPackageName = application.getPackageName();
-
-		String currentApplicationInstallerPackageName = application.getPackageManager().getInstallerPackageName(currentApplicationPackageName);
-
-		final Intent marketIntent;
-
-		if (GOOGLE_PLAY_INSTALLER_PACKAGE_NAME.equals(currentApplicationInstallerPackageName)) {
-			// Installed by GooglePlay: rate in Google Play
-			marketIntent = openGooglePlay(targetPackageName);
-		} else if (AMAZON_INSTALLER_PACKAGE_NAME.equals(currentApplicationInstallerPackageName)) {
-			// Installed by Amazon: rate in Amazon
-			// TODO: choose the domain depending on the Locale
-			marketIntent = openUrlInBuiltInBrowser("http://www.amazon.com/gp/mas/dl/android?p=" + targetPackageName);
-		} else {
-			doLog("openMarketForCurrentApplication: Unexpected installerName: " + currentApplicationInstallerPackageName);
-
-			// Unknown installerPackageName: fall-back on Google Play
-			marketIntent = openGooglePlay(targetPackageName);
-		}
-
-		return marketIntent;
-	}
-
-	/**
-	 * 
-	 * @param packageName
-	 *            the package identifying uniquely an application
-	 * @return an {@link Intent} opening Google Play with direct access to the
-	 *         specific application. It privileges the http:// scheme over the
-	 *         market:// scheme as Google Play is not available on all devices.
-	 *         Moreover, the http:// scheme will offer the user to open the
-	 *         GooglePlay application
-	 */
-	public Intent openGooglePlay(@Nonnull String packageName) {
-		// http://developer.android.com/distribute/googleplay/promote/linking.html
-		// "In general, you should use http:// format for links on web pages and
-		// market:// for links in Android apps."
-		// However, Google Play may not be installed on some devices: use the
-		// http format for maximum compatbility
-		Uri uri = Uri.parse("http://play.google.com/store/apps/details?id=" + packageName);
-		Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-
-		return configureIntent(intent, defaultIntentChooserTitle);
-	}
-
-	/**
 	 * 
 	 * @param packageName
 	 *            the package identifying uniquely an application
@@ -377,7 +317,9 @@ public class IntentFactory {
 		for (Map.Entry<String, ?> entry : extras.entrySet()) {
 
 			// TODO: test write boolean and read as primitive and serializable
-			if (entry.getValue() instanceof String) {
+			if (entry.getValue() == null) {
+				intent.putExtra(entry.getKey(), (String) entry.getValue());
+			} else if (entry.getValue() instanceof String) {
 				intent.putExtra(entry.getKey(), (String) entry.getValue());
 			} else if (entry.getValue() instanceof Boolean) {
 				intent.putExtra(entry.getKey(), (Boolean) entry.getValue());
@@ -388,5 +330,36 @@ public class IntentFactory {
 		}
 
 		return intent;
+	}
+
+	public void startActivity(@Nonnull Activity activity, @Nullable Intent intent) {
+		if (intent == null) {
+			// this is probably unexpected, but we prefer not to crash the
+			// application
+			return;
+		}
+
+		try {
+			activity.startActivity(intent);
+		} catch (ActivityNotFoundException anfe) {
+			doLog("ActivityNotFoundException for: " + intent);
+		}
+	}
+
+	public static final String MIME_TYPE_textplain = "text/plain";
+
+	public Intent send(String mimeType, String subject, String text) {
+		Intent intent = new Intent(Intent.ACTION_SEND);
+
+		if (mimeType == null) {
+			intent.setType(MIME_TYPE_textplain);
+		} else {
+			intent.setType(mimeType);
+		}
+
+		intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+		intent.putExtra(Intent.EXTRA_TEXT, text);
+
+		return configureIntent(intent, defaultIntentChooserTitle);
 	}
 }
