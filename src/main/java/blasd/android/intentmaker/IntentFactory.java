@@ -332,8 +332,13 @@ public class IntentFactory {
 		return intent;
 	}
 
-	public void startActivity(@Nonnull Activity activity, @Nullable Intent intent) {
+	public void startActivity(Activity activity, @Nullable Intent intent) {
 		if (intent == null) {
+			// this is probably unexpected, but we prefer not to crash the
+			// application
+			return;
+		}
+		if (activity == null) {
 			// this is probably unexpected, but we prefer not to crash the
 			// application
 			return;
