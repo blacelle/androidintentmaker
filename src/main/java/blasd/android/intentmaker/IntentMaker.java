@@ -17,8 +17,18 @@ import android.content.Intent;
 import android.net.Uri;
 import android.provider.MediaStore;
 
-public class IntentFactory {
+/**
+ * Provides a default implementation for {@link Intent} making not needing a
+ * {@link Context}
+ * 
+ * @author BLA
+ * 
+ */
+public class IntentMaker implements IIntentMaker {
 
+	/**
+	 * THe flags which will be applied to any {@link Intent} produced by this
+	 */
 	@Nonnull
 	protected final Set<Integer> defaultFlags;
 
@@ -68,19 +78,19 @@ public class IntentFactory {
 	 * By default, {@link Intent} are created without any flags and are wrapped
 	 * in an {@link Intent#createChooser(i)}
 	 */
-	public IntentFactory() {
+	public IntentMaker() {
 		this(null, new int[0]);
 	}
 
-	public IntentFactory(int... defaultFlags) {
+	public IntentMaker(int... defaultFlags) {
 		this(null, defaultFlags);
 	}
 
-	public IntentFactory(@Nonnull Collection<Integer> defaultFlags) {
+	public IntentMaker(@Nonnull Collection<Integer> defaultFlags) {
 		this(null, defaultFlags);
 	}
 
-	public IntentFactory(CharSequence intentChooserTitle, int... defaultFlags) {
+	public IntentMaker(CharSequence intentChooserTitle, int... defaultFlags) {
 		this.defaultFlags = new HashSet<Integer>();
 
 		// The ellipse is allowed to be null
@@ -94,7 +104,7 @@ public class IntentFactory {
 	}
 
 	// TODO: base this on int[] constructor
-	public IntentFactory(CharSequence intentChooserTitle, Collection<Integer> defaultFlags) {
+	public IntentMaker(CharSequence intentChooserTitle, Collection<Integer> defaultFlags) {
 		this.defaultFlags = new HashSet<Integer>();
 
 		if (defaultFlags != null) {

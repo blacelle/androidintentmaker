@@ -25,6 +25,12 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
+/**
+ * Will be used for Logging on Wildling
+ * 
+ * @author BLA
+ * 
+ */
 public class AsyncHttpCaller {
 
 	protected final ScheduledExecutorService ses = Executors.newScheduledThreadPool(1);

@@ -8,7 +8,7 @@ import org.junit.Test;
 public class TestIntentFactory {
 	@Test
 	public void testNullInFlags() {
-		IntentFactory iff = new IntentFactory(Collections.<Integer> singletonList(null));
+		IntentMaker iff = new IntentMaker(Collections.<Integer> singletonList(null));
 
 		Assert.assertTrue(iff.defaultFlags.isEmpty());
 	}

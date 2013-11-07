@@ -7,27 +7,53 @@ import java.util.Collection;
 import javax.annotation.Nonnull;
 
 import android.app.Activity;
-import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.provider.MediaStore.Images;
 import android.webkit.MimeTypeMap;
 
-public class ContextBasedIntentFactory implements IIntentFactory {
+/**
+ * This is a kind of advanced {@link IntentMaker}, with additional
+ * {@link Intent} factories requiring a {@link Context}
+ * 
+ * @author BLA
+ * 
+ */
+public class IntentMakerWithContext implements IIntentMaker {
 
+	/**
+	 * The installer package name used by Google Play
+	 */
 	@Nonnull
 	public static final String GOOGLE_PLAY_INSTALLER_PACKAGE_NAME = "com.android.vending";
+
+	/**
+	 * The installer package name used by Amazon
+	 */
 	@Nonnull
 	public static final String AMAZON_INSTALLER_PACKAGE_NAME = "com.amazon.venezia";
 
-	protected IntentFactory intentFactory;
-	protected ContextHelper contextHelper;
+	protected final IntentMaker intentFactory;
+	protected final ContextProviderForIntentFactory contextHelper;
 
-	public ContextBasedIntentFactory(@Nonnull IntentFactory intentFactory, @Nonnull ContextHelper intentFactoryHelper) {
+	/**
+	 * In some situations,
+	 * {@link PackageManager#getInstallerPackageName(String)} will return null.
+	 * It is the case if installed through the debugger, or when deployed by
+	 * Amazon application tester.
+	 */
+	protected static String defaultPackageName = GOOGLE_PLAY_INSTALLER_PACKAGE_NAME;
+
+	public IntentMakerWithContext(@Nonnull IntentMaker intentFactory, @Nonnull ContextProviderForIntentFactory intentFactoryHelper) {
 		this.intentFactory = intentFactory;
 		this.contextHelper = intentFactoryHelper;
+	}
+
+	public static void setDefaultInstallerPackageName(String defaultPackageName) {
+		IntentMakerWithContext.defaultPackageName = defaultPackageName;
 	}
 
 	/**
@@ -35,30 +61,34 @@ public class ContextBasedIntentFactory implements IIntentFactory {
 	 * (e.g. Amazon Market), one needs to easily open the market from which an
 	 * application has been installed.
 	 * 
-	 * @param application
 	 * @return an {@link Intent} opening the appropriate market for current
-	 *         application,
+	 *         application.
 	 * @throws IllegalArgumentException
 	 *             if application is null
 	 */
-	public Intent openMarketForCurrentApplication(Application application) throws IllegalArgumentException {
-		if (application == null) {
-			throw new IllegalArgumentException("Application is null");
-		}
-
-		String currentApplicationPackage = application.getPackageName();
+	public Intent openMarketForCurrentApplication() throws IllegalArgumentException {
+		String currentApplicationPackage = contextHelper.getAppContext().getPackageName();
 
 		if (currentApplicationPackage == null) {
 			return null;
 		} else {
-			return openMarket(application, currentApplicationPackage);
+			return openMarketForTargetPackageName(currentApplicationPackage);
 		}
 	}
 
-	public Intent openMarket(@Nonnull Application application, @Nonnull String targetPackageName) throws NullPointerException {
-		String currentApplicationPackageName = application.getPackageName();
+	/**
+	 * Make an Intent to open the most appropriate market for given application
+	 * 
+	 * @param application
+	 * @param targetPackageName
+	 * @return
+	 * @throws NullPointerException
+	 */
+	public Intent openMarketForTargetPackageName(@Nonnull String targetPackageName) throws NullPointerException {
+		String currentApplicationPackageName = contextHelper.getAppContext().getPackageName();
 
-		String currentApplicationInstallerPackageName = application.getPackageManager().getInstallerPackageName(currentApplicationPackageName);
+		String currentApplicationInstallerPackageName = contextHelper.getAppContext().getPackageManager()
+				.getInstallerPackageName(currentApplicationPackageName);
 
 		final Intent marketIntent;
 
@@ -71,10 +101,20 @@ public class ContextBasedIntentFactory implements IIntentFactory {
 			// http://www.amazon.com/gp/mas/dl/android?p=com.example.package&ref=mas_pm_app_name
 			marketIntent = intentFactory.openUrlInBuiltInBrowser("http://www.amazon.com/gp/mas/dl/android?p=" + targetPackageName);
 		} else {
-			intentFactory.doLog("openMarketForCurrentApplication: Unexpected installerName: " + currentApplicationInstallerPackageName);
+			if (currentApplicationInstallerPackageName != null) {
+				intentFactory.doLog("openMarketForCurrentApplication: Unexpected installerName: " + currentApplicationInstallerPackageName);
+			}
 
-			// Unknown installerPackageName: fall-back on Google Play
-			marketIntent = openGooglePlay(targetPackageName);
+			if (GOOGLE_PLAY_INSTALLER_PACKAGE_NAME.equals(defaultPackageName)) {
+				// Fallback on Google Play
+				marketIntent = openGooglePlay(targetPackageName);
+			} else if (AMAZON_INSTALLER_PACKAGE_NAME.equals(defaultPackageName)) {
+				// Fallback on Amazon
+				marketIntent = intentFactory.openUrlInBuiltInBrowser("http://www.amazon.com/gp/mas/dl/android?p=" + targetPackageName);
+			} else {
+				// Invalid fallback: Fallback on Google Play
+				marketIntent = openGooglePlay(targetPackageName);
+			}
 		}
 
 		return marketIntent;
@@ -120,20 +160,20 @@ public class ContextBasedIntentFactory implements IIntentFactory {
 		return intentFactory.configureIntent(intent);
 	}
 
-	public static ContextBasedIntentFactory buildFactory(Context context) {
-		return buildFactory(context, null, null);
+	public static IntentMakerWithContext makeFactory(Context context) {
+		return makeFactory(context, null, null);
 	}
 
-	public static ContextBasedIntentFactory buildFactory(Context context, Collection<Integer> popupFlags) {
-		return buildFactory(context, null, popupFlags);
+	public static IntentMakerWithContext makeFactory(Context context, Collection<Integer> popupFlags) {
+		return makeFactory(context, null, popupFlags);
 	}
 
-	public static ContextBasedIntentFactory buildFactory(Context context, CharSequence intentChooserTitle, Collection<Integer> defaultFlags) {
+	public static IntentMakerWithContext makeFactory(Context context, CharSequence intentChooserTitle, Collection<Integer> defaultFlags) {
 		if (context == null) {
 			throw new RuntimeException("Application is null");
 		}
 
-		return new ContextBasedIntentFactory(new IntentFactory(intentChooserTitle, defaultFlags), new ContextHelper(context));
+		return new IntentMakerWithContext(new IntentMaker(intentChooserTitle, defaultFlags), new ContextProviderForIntentFactory(context));
 	}
 
 	public void startActivity(Activity activity, Intent intent) {

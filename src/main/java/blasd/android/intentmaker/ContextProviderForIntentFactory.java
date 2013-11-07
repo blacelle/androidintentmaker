@@ -12,11 +12,11 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 
-public class ContextHelper {
+public class ContextProviderForIntentFactory {
 	@Nonnull
 	protected final Context context;
 
-	public ContextHelper(@Nonnull Context context) {
+	public ContextProviderForIntentFactory(@Nonnull Context context) {
 		this.context = context;
 	}
 

@@ -7,12 +7,10 @@ import javax.annotation.Nonnull;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
-import blasd.android.intentmaker.ContextBasedIntentFactory;
-import blasd.android.intentmaker.IIntentFactory;
-import blasd.android.intentmaker.IntentFactory;
+import blasd.android.intentmaker.IntentMakerWithContext;
+import blasd.android.intentmaker.IntentMaker;
 
 /**
  * Extends BarcodeScanner {@link IntentIntegrator} in order to be compatible
@@ -54,11 +52,11 @@ public class AmazonCompatibleIntentIntegrator extends IntentIntegrator {
 			public void onClick(DialogInterface dialogInterface, int i) {
 				String packageName = targetApplications.get(0);
 
-				ContextBasedIntentFactory factory = ContextBasedIntentFactory.buildFactory(activity.getApplication(), "Download Barcode Scanner",
-						IntentFactory.POPUP_FLAGS);
+				IntentMakerWithContext factory = IntentMakerWithContext.makeFactory(activity.getApplication(), "Download Barcode Scanner",
+						IntentMaker.POPUP_FLAGS);
 
 				@SuppressWarnings("null")
-				Intent intent = factory.openMarket(activity.getApplication(), packageName);
+				Intent intent = factory.openMarketForTargetPackageName(packageName);
 
 				factory.startActivity(activity, intent);
 			}
