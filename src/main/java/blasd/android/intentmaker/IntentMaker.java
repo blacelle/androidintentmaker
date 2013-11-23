@@ -377,4 +377,15 @@ public class IntentMaker implements IIntentMaker {
 
 		return configureIntent(intent, defaultIntentChooserTitle);
 	}
+
+	/**
+	 * 
+	 * @param packageContext
+	 * @param targetActivity
+	 * 
+	 * @see #Intent(Context packageContext, Class<?> cls)
+	 */
+	public void startHardCodedActivity(Context packageContext, Class<? extends Activity> targetActivity) {
+		packageContext.startActivity(new Intent(packageContext, targetActivity));
+	}
 }

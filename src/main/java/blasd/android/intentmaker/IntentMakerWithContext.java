@@ -1,18 +1,22 @@
 package blasd.android.intentmaker;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 
 import javax.annotation.Nonnull;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.provider.MediaStore.Images;
+import android.support.v4.content.FileProvider;
 import android.webkit.MimeTypeMap;
 
 /**
@@ -201,21 +205,36 @@ public class IntentMakerWithContext implements IIntentMaker {
 	 *             {@link android.Manifest.permission#WRITE_EXTERNAL_STORAGE}.
 	 */
 	public Intent sendBitmap(String subject, String text, @Nonnull Bitmap bitmap) throws IOException {
-		if (!contextHelper.checkPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-			return null;
-		}
-
-		// Save as a JPEG by default
-		String pathofBmp = Images.Media.insertImage(contextHelper.getAppContext().getContentResolver(), bitmap, "title", text);
-
-		if (pathofBmp == null) {
-			// We are probably missing the permission
-			return null;
-		}
-
-		Uri imageUri = Uri.parse(pathofBmp);
-
 		Intent intent = new Intent(Intent.ACTION_SEND, Uri.parse("mailto:"));
+
+		Uri imageUri;
+		if (contextHelper.checkPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+			// If we are allowed to write the external storage, write in the
+			// Shared image folder
+			// Save as a JPEG by default
+			String pathofBmp = Images.Media.insertImage(contextHelper.getAppContext().getContentResolver(), bitmap, "title", text);
+
+			imageUri = Uri.parse(pathofBmp);
+		} else {
+			// http://developer.android.com/reference/android/support/v4/content/FileProvider.html
+			File cacheFOlder = contextHelper.getAppContext().getCacheDir();
+
+			// TODO: shared_history should be a parameter
+			File folder = new File(contextHelper.getAppContext().getFilesDir(), "shared_history");
+
+			// Write in the application cache
+			File pathofBmp = insertImage(contextHelper.getAppContext().getContentResolver(), bitmap, "title", text, folder);
+
+			// http://stackoverflow.com/questions/3004713/get-content-uri-from-file-path-in-android
+			// Works after Android 2.2
+			// imageUri = Uri.fromFile(pathofBmp);
+
+			imageUri = FileProvider.getUriForFile(contextHelper.getAppContext(), "net.blasd.fileprovider", pathofBmp);
+
+			// Alloy the target application to read this URL
+			// intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		}
+
 		intent.putExtra(Intent.EXTRA_SUBJECT, subject);
 		intent.putExtra(Intent.EXTRA_TEXT, text);
 
@@ -232,6 +251,25 @@ public class IntentMakerWithContext implements IIntentMaker {
 		}
 
 		return configureIntent(intent);
+	}
+
+	protected static final File insertImage(ContentResolver cr, Bitmap source, String title, String description, File cacheDir) {
+		// http://stackoverflow.com/questions/7540386/android-saving-and-loading-a-bitmap-in-cache-from-diferent-activities
+		try {
+			cacheDir.mkdirs();
+			File f = new File(cacheDir, "shared.jpg");
+			FileOutputStream out = new FileOutputStream(f);
+			source.compress(Bitmap.CompressFormat.JPEG, 100, out);
+			out.flush();
+			out.close();
+
+			return f;
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+
 	}
 
 	@Override

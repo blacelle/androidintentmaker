@@ -50,6 +50,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>android.support</groupId>
+			<artifactId>compatibility-v13</artifactId>
+			<version>19</version>
+		</dependency>
+
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.11</version>
