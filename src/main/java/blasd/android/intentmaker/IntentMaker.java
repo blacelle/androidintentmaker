@@ -86,7 +86,7 @@ public class IntentMaker implements IIntentMaker {
 		this(null, defaultFlags);
 	}
 
-	public IntentMaker(@Nonnull Collection<Integer> defaultFlags) {
+	public IntentMaker(Collection<Integer> defaultFlags) {
 		this(null, defaultFlags);
 	}
 

@@ -201,10 +201,18 @@ public class IntentMakerWithContext implements IIntentMaker {
 	 * @return
 	 * @throws IOException
 	 * 
-	 *             Requires
+	 *             Behavior depends on
 	 *             {@link android.Manifest.permission#WRITE_EXTERNAL_STORAGE}.
+	 * 
+	 *             <provider
+	 *             android:name="android.support.v4.content.FileProvider"
+	 *             android:authorities="net.blasd.fileprovider"
+	 *             android:exported="false" android:grantUriPermissions="true" >
+	 *             <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+	 *             android:resource="@xml/shared_paths" /> </provider>
 	 */
-	public Intent sendBitmap(String subject, String text, @Nonnull Bitmap bitmap) throws IOException {
+	public Intent sendBitmap(String subject, String text, @Nonnull Bitmap bitmap, @Nonnull String providerAuthority, @Nonnull String subFolder)
+			throws IOException {
 		Intent intent = new Intent(Intent.ACTION_SEND, Uri.parse("mailto:"));
 
 		Uri imageUri;
@@ -217,10 +225,8 @@ public class IntentMakerWithContext implements IIntentMaker {
 			imageUri = Uri.parse(pathofBmp);
 		} else {
 			// http://developer.android.com/reference/android/support/v4/content/FileProvider.html
-			File cacheFOlder = contextHelper.getAppContext().getCacheDir();
-
 			// TODO: shared_history should be a parameter
-			File folder = new File(contextHelper.getAppContext().getFilesDir(), "shared_history");
+			File folder = new File(contextHelper.getAppContext().getFilesDir(), subFolder);
 
 			// Write in the application cache
 			File pathofBmp = insertImage(contextHelper.getAppContext().getContentResolver(), bitmap, "title", text, folder);
@@ -229,7 +235,7 @@ public class IntentMakerWithContext implements IIntentMaker {
 			// Works after Android 2.2
 			// imageUri = Uri.fromFile(pathofBmp);
 
-			imageUri = FileProvider.getUriForFile(contextHelper.getAppContext(), "net.blasd.fileprovider", pathofBmp);
+			imageUri = FileProvider.getUriForFile(contextHelper.getAppContext(), providerAuthority, pathofBmp);
 
 			// Alloy the target application to read this URL
 			// intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
